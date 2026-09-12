@@ -50,6 +50,12 @@ logger = logging.getLogger(__name__)
 
 MODEL_VERSION: str = "1.0.0"
 
+# Checkpoints trained on synthetic fixtures are useful for demonstrating the
+# end-to-end plumbing, but must never silently become the normal scoring path.
+# Select them only with COGNIPLAY_SCORING_MODE=demo.
+SCORING_MODE_ENV: str = "COGNIPLAY_SCORING_MODE"
+SCORING_MODES: Tuple[str, ...] = ("heuristic", "validated", "demo")
+
 #: The three conditions screened for, in the order they appear in responses.
 CONDITIONS: List[str] = ["dyslexia", "dyscalculia", "adhd"]
 
@@ -250,18 +256,37 @@ class FusionModel:
     and reuse across requests.
     """
 
-    def __init__(self, saved_models_dir: Optional[str] = None) -> None:
+    def __init__(self, saved_models_dir: Optional[str] = None,
+                 scoring_mode: Optional[str] = None) -> None:
         """Build the sub-models and attempt to load weights.
 
         Args:
             saved_models_dir: Directory to search for ``.pt`` checkpoints.
-                Defaults to the ``saved_models/`` folder beside this package.
+                Defaults according to ``scoring_mode``.
+            scoring_mode: ``heuristic`` ignores all checkpoints, ``validated``
+                loads ``saved_models/``, and ``demo`` loads the explicitly
+                synthetic ``training/demo_models/`` directory. Defaults to
+                the COGNIPLAY_SCORING_MODE environment variable, or
+                ``heuristic`` when it is not set.
         """
+        requested_mode = (scoring_mode or os.getenv(
+            SCORING_MODE_ENV, "heuristic"
+        )).strip().lower()
+        if requested_mode not in SCORING_MODES:
+            logger.warning("Unknown %s=%r; using heuristic mode.",
+                           SCORING_MODE_ENV, requested_mode)
+            requested_mode = "heuristic"
+        self.scoring_mode = requested_mode
+
         if saved_models_dir is None:
             package_dir = os.path.dirname(os.path.abspath(__file__))
-            saved_models_dir = os.path.join(
-                os.path.dirname(package_dir), "saved_models"
-            )
+            backend_dir = os.path.dirname(package_dir)
+            if self.scoring_mode == "demo":
+                saved_models_dir = os.path.join(
+                    backend_dir, "training", "demo_models"
+                )
+            else:
+                saved_models_dir = os.path.join(backend_dir, "saved_models")
         self.saved_models_dir = saved_models_dir
         self.model_version = MODEL_VERSION
         self.torch_available = TORCH_AVAILABLE
@@ -269,8 +294,11 @@ class FusionModel:
         self.cnn = DyslexiaCNN()
         self.lstm = AttentionLSTM()
 
-        self.cnn_trained = self._try_load(self.cnn, CNN_WEIGHTS_FILENAME)
-        self.lstm_trained = self._try_load(self.lstm, LSTM_WEIGHTS_FILENAME)
+        self.cnn_trained = False
+        self.lstm_trained = False
+        if self.scoring_mode != "heuristic":
+            self.cnn_trained = self._try_load(self.cnn, CNN_WEIGHTS_FILENAME)
+            self.lstm_trained = self._try_load(self.lstm, LSTM_WEIGHTS_FILENAME)
 
         if self.cnn_trained or self.lstm_trained:
             logger.info(
@@ -278,9 +306,11 @@ class FusionModel:
                 "lstm=%s). Neural output is blended with the heuristic.",
                 self.cnn_trained, self.lstm_trained,
             )
+        elif self.scoring_mode == "heuristic":
+            logger.info("FusionModel ready -- heuristic-only mode selected.")
         else:
             logger.info(
-                "FusionModel ready -- NO trained weights found in %s. Using "
+                "FusionModel ready -- NO weights found in %s. Using "
                 "the deterministic clinical-heuristic path as the source of "
                 "truth. Output is a screening indicator, not a diagnosis.",
                 self.saved_models_dir,
@@ -345,7 +375,7 @@ class FusionModel:
                     _TRAINED_MODEL_SHARE * cnn_score
                     + (1.0 - _TRAINED_MODEL_SHARE) * scores["dyslexia"]
                 )
-                used_path = "blended"
+                used_path = "demo_blended" if self.scoring_mode == "demo" else "blended"
 
             if self.lstm_trained and sequence is not None:
                 lstm_score = _clamp01(self.lstm.predict(sequence))
@@ -353,7 +383,7 @@ class FusionModel:
                     _TRAINED_LSTM_SHARE * lstm_score
                     + (1.0 - _TRAINED_LSTM_SHARE) * scores["adhd"]
                 )
-                used_path = "blended"
+                used_path = "demo_blended" if self.scoring_mode == "demo" else "blended"
 
             logger.info(
                 "FusionModel.predict path=%s dyslexia=%.3f dyscalculia=%.3f "
@@ -372,6 +402,7 @@ class FusionModel:
                 },
                 "raw_scores": {k: round(v, 4) for k, v in raw_scores.items()},
                 "used_path": used_path,
+                "scoring_mode": self.scoring_mode,
                 "model_version": self.model_version,
             }
         except Exception as exc:
@@ -383,6 +414,7 @@ class FusionModel:
                 "risk_levels": {c: "Low" for c in CONDITIONS},
                 "raw_scores": {c: 0.0 for c in CONDITIONS},
                 "used_path": "error",
+                "scoring_mode": self.scoring_mode,
                 "model_version": self.model_version,
             }
 

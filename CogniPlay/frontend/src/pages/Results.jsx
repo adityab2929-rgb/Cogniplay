@@ -90,6 +90,15 @@ export default function Results() {
       </header>
 
       <main className="max-w-5xl mx-auto px-6 py-8 space-y-8">
+        {results.scoring_mode === 'demo' && (
+          <div className="rounded-2xl bg-rose-50 border border-rose-300 p-5">
+            <h2 className="font-bold text-rose-900 mb-1.5">Synthetic-model demonstration mode</h2>
+            <p className="text-sm text-rose-900 leading-relaxed">
+              Dyslexia and ADHD cards blend demo models trained only on synthetic fixtures with the heuristic score.
+              These percentages are for software demonstration, not real screening or decision-making.
+            </p>
+          </div>
+        )}
         {/* Disclaimer sits ABOVE the scores deliberately - it must be read first. */}
         <div className="rounded-2xl bg-amber-50 border border-amber-200 p-5">
           <h2 className="font-bold text-amber-900 mb-1.5 flex items-center gap-2">

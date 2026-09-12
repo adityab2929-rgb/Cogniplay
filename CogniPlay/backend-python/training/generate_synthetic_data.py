@@ -26,7 +26,8 @@ from features.extract_features import (
 )
 
 SEED = 20260912
-SAMPLES_PER_PROFILE = 30
+# Eight equally represented profiles x 1,250 = 10,000 complete sessions.
+SAMPLES_PER_PROFILE = 1250
 OUTPUT_DIR = Path(__file__).resolve().parent / "synthetic_data"
 PROFILES: List[Tuple[str, int, int, int]] = [
     ("typical", 0, 0, 0),
@@ -122,11 +123,14 @@ def make_butterfly_game(rng: random.Random, adhd: int) -> Dict[str, Any]:
     for index in range(SEQUENCE_LENGTH):
         if adhd:
             score = jitter(rng, 0.86 - 0.085 * index, 0.075, 0.28, 0.94)
-            catches = rng.randint(8, 15)
+            catches = rng.randint(15, 40)
         else:
-            score = jitter(rng, 0.91 - 0.004 * index, 0.025, 0.80, 0.99)
-            catches = rng.randint(10, 15)
-        correct = int(round(catches * score))
+            score = jitter(rng, 0.91 - 0.004 * index, 0.025, 0.80, 0.96)
+            catches = rng.randint(18, 35)
+        # Each fixture records at least one wrong-target catch. It preserves a
+        # plausible high-accuracy typical pattern while avoiding identical
+        # all-perfect six-step LSTM sequences across a large synthetic set.
+        correct = min(catches - 1, int(round(catches * score)))
         intervals.append({"interval": index, "correct": correct,
                           "wrong": catches - correct,
                           "score": round(correct / catches, 6)})

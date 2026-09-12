@@ -42,7 +42,7 @@ from explainability.gradcam import (
 from explainability.shap_explain import SHAP_AVAILABLE, explain
 from features.extract_features import build_sequence, extract_features
 from models.fusion_model import (
-    CONDITIONS, MODEL_VERSION, FusionModel, risk_level,
+    CONDITIONS, MODEL_VERSION, SCORING_MODE_ENV, FusionModel, risk_level,
 )
 from models.cnn_model import TORCH_AVAILABLE
 from report.pdf_generator import REPORTLAB_AVAILABLE, generate_report
@@ -500,8 +500,13 @@ def health() -> Dict[str, Any]:
         "cv2_available": CV2_AVAILABLE,
         "pillow_available": PIL_AVAILABLE,
         "trained_weights_loaded": fusion_model.uses_trained_weights,
+        "scoring_mode": fusion_model.scoring_mode,
+        "scoring_mode_environment_variable": SCORING_MODE_ENV,
         "scoring_path": (
-            "blended" if fusion_model.uses_trained_weights else "heuristic"
+            "demo_blended" if (
+                fusion_model.uses_trained_weights
+                and fusion_model.scoring_mode == "demo"
+            ) else ("blended" if fusion_model.uses_trained_weights else "heuristic")
         ),
         "model_version": MODEL_VERSION,
     }
@@ -670,6 +675,7 @@ def predict_learning_pattern(session: SessionPayload) -> Dict[str, Any]:
         "heatmap": heatmap,
         "recommendations": recommendations,
         "model_version": MODEL_VERSION,
+        "scoring_mode": prediction.get("scoring_mode", "heuristic"),
         "degraded_mode": degraded,
         "insufficient_data": insufficient,
     }

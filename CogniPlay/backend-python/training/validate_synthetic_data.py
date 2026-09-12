@@ -33,8 +33,9 @@ def main() -> None:
     labels = read_csv("labels.csv")
     cnn_rows = read_csv("cnn_training.csv")
     lstm_rows = read_csv("lstm_training.csv")
-    require(len(raw) == len(labels) == len(cnn_rows) == 240, "Expected 240 sessions")
-    require(len(lstm_rows) == 240 * SEQUENCE_LENGTH, "Unexpected LSTM row count")
+    expected_sessions = 10000
+    require(len(raw) == len(labels) == len(cnn_rows) == expected_sessions, "Expected 10,000 sessions")
+    require(len(lstm_rows) == expected_sessions * SEQUENCE_LENGTH, "Unexpected LSTM row count")
     require(list(cnn_rows[0].keys()) == ["session_id", "synthetic_profile", "dyslexia_label"] + FEATURE_NAMES, "CNN header/order mismatch")
     require(list(lstm_rows[0].keys()) == ["session_id", "synthetic_profile", "adhd_label", "timestep", "interval_score", "correct_norm", "wrong_norm", "score_change"], "LSTM header/order mismatch")
     raw_by_id = {item["session_id"]: item for item in raw}
@@ -67,7 +68,7 @@ def main() -> None:
         key = tuple(np.round(sequence.reshape(-1), 8))
         require(key not in sequence_keys, "Duplicate LSTM sequence")
         sequence_keys.add(key)
-    print("PASS: 240 complete, unique sessions; 20-feature CNN rows and 6x4 LSTM sequences match live extraction.")
+    print("PASS: 10,000 complete, unique sessions; 20-feature CNN rows and 6x4 LSTM sequences match live extraction.")
 
 
 if __name__ == "__main__":

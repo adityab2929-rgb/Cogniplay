@@ -13,9 +13,11 @@ ten minutes of ordinary play.
 CogniPlay is a **screening prototype, not a diagnostic tool**.
 
 - It **cannot diagnose** dyslexia, dyscalculia or ADHD. Nobody can, from a game.
-- **No trained model ships with this project.** The AI service uses a transparent
-  clinical-heuristic scorer. The scores are plausible and internally consistent,
-  but they are **not clinically validated** against any real cohort.
+- The repository includes **synthetic-development fixtures and demo checkpoints**
+  for testing the data and scoring pipeline. They are not trained on children,
+  are not clinically validated, and must not be used for real screening.
+- The default scoring mode remains the transparent clinical heuristic. Synthetic
+  checkpoints are loaded only when the explicit `demo` mode is selected.
 - A "High" score means *"this pattern is worth showing to a professional"* — nothing more.
 - Never use these outputs to group, label or stream children.
 
@@ -30,7 +32,7 @@ the project, not a weakness — the architecture is real even though the weights
 |---|---|---|
 | `frontend/` | React 18, TailwindCSS, Framer Motion, Chart.js, WebGazer | 3000 |
 | `backend-node/` | Express, Mongoose, JWT, bcrypt | 3001 |
-| `backend-python/` | FastAPI, NumPy (PyTorch/SHAP optional) | 8000 |
+| `backend-python/` | FastAPI, NumPy, optional PyTorch/SHAP | 8000 |
 | MongoDB | via Docker or Atlas | 27017 |
 
 ### The four games
@@ -54,11 +56,13 @@ Only gaze coordinates are used, and only in the browser.
 |---|---|---|
 | **Node.js** | 18 or newer | `node --version` |
 | **npm** | ships with Node | `npm --version` |
-| **Python** | 3.9 or newer | `python3 --version` |
+| **Python** | 3.10–3.14 for PyTorch demo mode | `py --version` / `python3 --version` |
 | **MongoDB** | optional — see below | `mongod --version` |
 | **Docker** | optional, only for Option A | `docker --version` |
 
-The code is deliberately written to run on **Python 3.9**, so you do not need 3.10+.
+The heuristic-only service can run without PyTorch. For the included Windows
+demo checkpoints, use Python 3.14 and the CPU build of PyTorch 2.14.0. Docker
+uses Python 3.11 but does not install PyTorch by default.
 
 **MongoDB is optional for a first run.** The API server starts and logs a warning
 if it cannot connect. Games, scoring and the results page all work without it —
@@ -81,7 +85,31 @@ Then open <http://localhost:3000>.
 
 ### Option B — Locally, three terminals
 
-**1. Python AI service**
+**1. Python AI service — Windows with synthetic demo mode**
+
+```powershell
+cd backend-python
+py -3.14 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install --upgrade pip
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe -m pip install torch==2.14.0 --index-url https://download.pytorch.org/whl/cpu
+
+$env:COGNIPLAY_SCORING_MODE = "demo"
+.\.venv\Scripts\python.exe main.py    # http://localhost:8000
+```
+
+PowerShell execution policies do not need to be changed because the commands
+invoke the virtual-environment interpreter directly rather than activating it.
+
+**Heuristic-only mode**
+
+```powershell
+$env:COGNIPLAY_SCORING_MODE = "heuristic"
+.\.venv\Scripts\python.exe main.py
+```
+
+**Linux/macOS heuristic-only service**
+
 ```bash
 cd backend-python
 python3 -m venv venv && source venv/bin/activate
@@ -89,10 +117,8 @@ pip install fastapi "uvicorn[standard]" numpy pydantic python-multipart
 python main.py                      # http://localhost:8000
 ```
 
-> The heavy libraries (torch, shap, opencv, reportlab) are **optional**. The service
-> starts and returns correctly-shaped predictions without them, using the heuristic
-> model. Install them with `pip install -r requirements.txt` to enable the full path.
-> Check which mode you're in at <http://localhost:8000/health>.
+> PyTorch is needed only when a checkpoint-based mode is selected. Check the
+> active scoring mode and whether weights loaded at <http://localhost:8000/health>.
 
 **2. Node API**
 ```bash
@@ -149,9 +175,15 @@ The virtualenv isn't active. `source venv/bin/activate` inside `backend-python`.
 The Python service on :8000 isn't running. That's by design — the session is still
 saved and no gameplay data is lost. Start it and try again.
 
+**`torch` cannot be imported or demo models do not load**
+Use the same virtual-environment interpreter for installation and startup:
+`\.venv\Scripts\python.exe -m pip install torch==2.14.0 --index-url https://download.pytorch.org/whl/cpu`.
+Then set `COGNIPLAY_SCORING_MODE` before restarting the Python service.
+
 **Scores look plausible but suspiciously round**
-Expected. No trained weights ship with this project — scoring uses the documented
-heuristic path. See the notice at the top of this file.
+In `heuristic` mode this is expected: the service uses its documented weighted
+rule. In `demo` mode the CNN and LSTM are trained solely on generated data, so
+their output is useful only for demonstrating the pipeline.
 
 **Camera / eye tracking does nothing**
 Also expected on many machines. It needs webcam permission on a secure origin.
@@ -210,6 +242,51 @@ No gameplay data is lost.
 
 ---
 
+## Scoring modes and demo checkpoints
+
+The Python service reads `COGNIPLAY_SCORING_MODE` at startup.
+
+| Mode | Checkpoints loaded | Final score behaviour |
+|---|---|---|
+| `heuristic` (default) | None | All three indicators use the transparent heuristic. |
+| `demo` | `training/demo_models/dyslexia_cnn.pt` and `adhd_lstm.pt` | Dyslexia = 60% CNN + 40% heuristic; ADHD = 50% LSTM + 50% heuristic; dyscalculia remains heuristic-only. |
+| `validated` | `saved_models/dyslexia_cnn.pt` and `adhd_lstm.pt` | Uses the same blends, but this mode is reserved for independently validated checkpoints. |
+
+The Results page displays an explicit warning whenever `demo` mode is active.
+The percentage is a 0–1 score converted to a percentage; it is not a
+probability of diagnosis.
+
+### Synthetic dataset and demo training
+
+`backend-python/training/synthetic_data/` contains deterministic development
+fixtures generated from game-behaviour assumptions:
+
+| Artifact | Size | Purpose |
+|---|---:|---|
+| `raw_sessions.jsonl` | 10,000 sessions | Complete frontend-compatible mock sessions across eight profiles, including typical/no-flag cases. |
+| `labels.csv` | 10,000 rows | Synthetic dyslexia, dyscalculia, and ADHD labels. |
+| `cnn_training.csv` | 10,000 rows | One 20-feature input vector per session and its synthetic dyslexia label. |
+| `lstm_training.csv` | 60,000 rows | Six timesteps per session, producing 10,000 `(6, 4)` LSTM inputs and synthetic ADHD labels. |
+| `manifest.json` | 1 file | Seed, exact feature order, shapes, and file checksums. |
+
+Generate and validate the fixtures from `backend-python`:
+
+```powershell
+.\.venv\Scripts\python.exe training/generate_synthetic_data.py
+.\.venv\Scripts\python.exe training/validate_synthetic_data.py
+```
+
+Train the demo checkpoints:
+
+```powershell
+.\.venv\Scripts\python.exe training/train_models.py --data-dir training/synthetic_data
+```
+
+The training script writes to `training/demo_models/` and refuses to install
+synthetic-trained weights in `saved_models/`.
+
+---
+
 ## Design decisions worth defending in a viva
 
 - **Graceful degradation everywhere.** Missing camera, missing Firebase, missing
@@ -236,8 +313,11 @@ dangerous output a screening tool can produce.
 
 ## Known limitations
 
-- The fusion model is **untrained**; heuristic weights were chosen from the
-  literature's qualitative findings, not fitted to data.
+- The heuristic weights were chosen from qualitative findings, not fitted to
+  clinical outcome data.
+- Included CNN/LSTM checkpoints were trained only on synthetic fixtures. More
+  synthetic rows improve a software demonstration, not real-world accuracy,
+  calibration, sensitivity, or specificity.
 - Norms are not age-standardised — a 4-year-old and a 5-year-old are scored identically.
 - WebGazer accuracy varies widely with lighting and camera quality.
 - No accessibility audit has been done on the games themselves.
@@ -253,5 +333,6 @@ CogniPlay/
 ├── frontend/          React app — games, dashboards, results
 ├── backend-node/      Express API — auth, sessions, reports
 ├── backend-python/    FastAPI — feature extraction, scoring, explanation, PDF
+│   └── training/      Synthetic fixtures, validator, demo trainer and demo models
 └── docker-compose.yml
 ```

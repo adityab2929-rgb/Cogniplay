@@ -19,7 +19,8 @@ const sessionSchema = new mongoose.Schema({
     adhd_score: Number,
     risk_levels: { type: Object },
     explanation: { type: Object },
-    heatmap: String
+    heatmap: String,
+    scoring_mode: { type: String, default: 'heuristic' }
   },
   status: {
     type: String,

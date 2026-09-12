@@ -1,15 +1,15 @@
 {
   "purpose": "synthetic development fixtures only; not clinical data or deployable models",
   "seed": 20260912,
-  "sessions": 240,
+  "sessions": 10000,
   "profiles": 8,
   "cnn_input_shape": [
-    240,
+    10000,
     1,
     20
   ],
   "lstm_input_shape": [
-    240,
+    10000,
     6,
     4
   ],
@@ -36,9 +36,9 @@
     "off_screen_rate"
   ],
   "files": {
-    "raw_sessions.jsonl": "d5d91093d2e68ac808101fe6748347f7b36eef4204152f5dda789555394b3097",
-    "labels.csv": "58c8d0b9e6c5ae4f6e3a0916baaf7bde5ec6e751c6a80a1b793c11721a70c325",
-    "cnn_training.csv": "d80c543677d3ad1ae20e7d71b6a79b363f26b4e5ab91c8db595c12a0701e9ed1",
-    "lstm_training.csv": "77dfb4a08282220653871a751e8f267406119b4cf8144671b08554424f2ff195"
+    "raw_sessions.jsonl": "85248ebb9771eb76b40cef35a9fcea6bbf91898fb027bca367aa1483c16f5ad0",
+    "labels.csv": "6330b4f569c287ae50938b5f4afc401944e283473d6e695b66c42853f84c83e6",
+    "cnn_training.csv": "b482f0fabbe9ac7611577312e243e1a2aa00633bd2710dcf4a02dc11265f5548",
+    "lstm_training.csv": "894cbd93d7a0a6f153626c26980eee3b719df1434e939646f31ab6dddf72e824"
   }
 }

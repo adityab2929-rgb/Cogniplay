@@ -18,16 +18,16 @@ The generator writes `training/synthetic_data/`:
 
 | File | Rows | Purpose |
 | --- | ---: | --- |
-| `raw_sessions.jsonl` | 240 | Complete mock request payloads, one JSON object per session. |
-| `labels.csv` | 240 | Synthetic binary labels for the three conditions and a profile name. |
-| `cnn_training.csv` | 240 | One row per session.  Its **20 model-input columns** exactly equal `FEATURE_NAMES`; `dyslexia_label` is the target. |
-| `lstm_training.csv` | 1,440 | Six rows per session.  Its **four model-input columns** are `interval_score`, `correct_norm`, `wrong_norm`, and `score_change`; group each six-row session into a `(6, 4)` LSTM input. |
+| `raw_sessions.jsonl` | 10,000 | Complete mock request payloads, one JSON object per session. |
+| `labels.csv` | 10,000 | Synthetic binary labels for the three conditions and a profile name. |
+| `cnn_training.csv` | 10,000 | One row per session.  Its **20 model-input columns** exactly equal `FEATURE_NAMES`; `dyslexia_label` is the target. |
+| `lstm_training.csv` | 60,000 | Six rows per session.  Its **four model-input columns** are `interval_score`, `correct_norm`, `wrong_norm`, and `score_change`; group each six-row session into a `(6, 4)` LSTM input. |
 | `manifest.json` | 1 | Reproducibility metadata, dimensions and SHA-256 checksums. |
 
 All source values are complete and finite. The validation command checks:
 
 * exact header/order agreement with the live feature code;
-* 240 distinct session IDs and no duplicate model-input rows/sequences;
+* 10,000 distinct session IDs and no duplicate model-input rows/sequences;
 * six ordered timesteps for every LSTM session;
 * no blank, NaN, infinite, or out-of-range feature values;
 * label and raw-payload consistency; and
@@ -54,3 +54,18 @@ saved_models/adhd_lstm.pt
 
 Synthetic labels are not diagnoses and never enter the live API request or
 live prediction path.
+
+## Running the app in synthetic demonstration mode
+
+After creating the two demo checkpoints, set this environment variable before
+starting the Python service:
+
+```powershell
+$env:COGNIPLAY_SCORING_MODE = "demo"
+.\.venv\Scripts\python.exe main.py
+```
+
+In this mode the service loads `training/demo_models/` and reports
+`scoring_mode: "demo"`. The Results page shows an explicit warning. The
+normal default, `heuristic`, never loads a checkpoint. `validated` is reserved
+for independently validated checkpoints placed in `saved_models/`.

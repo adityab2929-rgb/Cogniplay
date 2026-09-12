@@ -82,7 +82,8 @@ router.post('/', async (req, res) => {
         adhd_score: results.adhd_score,
         risk_levels: results.risk_levels,
         explanation: results.explanation,
-        heatmap: results.heatmap
+        heatmap: results.heatmap,
+        scoring_mode: results.scoring_mode || 'heuristic'
       };
       session.status = 'completed';
       session.analysedAt = new Date();
