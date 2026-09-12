@@ -1,0 +1,13 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body, #root { height: 100%; }
+body {
+  margin: 0;
+  font-family: 'Baloo 2', 'Comic Sans MS', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+/* Children tap fast and repeatedly - stop iOS double-tap zoom and text selection. */
+button { touch-action: manipulation; }
+.no-select { user-select: none; -webkit-user-select: none; }

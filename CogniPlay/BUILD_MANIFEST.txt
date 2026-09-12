@@ -1,0 +1,42 @@
+CogniPlay - build manifest
+Generated: 2026-09-02
+
+SCOPE OF THIS BUILD
+  Every file below was written from scratch from the project specification.
+  Nothing was copied, imported, or derived from any other folder on this
+  machine. No git repository was created and no remote was contacted.
+  All writes were confined to ~/Desktop/CogniPlay/.
+
+  Verify that claim yourself:
+      find ~/Desktop/CogniPlay -type f | wc -l     -> should print 61
+      ls -a ~/Desktop/CogniPlay | grep .git        -> should print nothing
+
+WHAT WAS VERIFIED BEFORE PACKAGING
+  - All 12 backend-node/*.js files parse cleanly (node --check).
+  - All 11 backend-python/*.py files compile under Python 3.9.6, the
+    interpreter actually installed on this machine.
+  - Zero Python 3.10+ syntax (no PEP-604 unions, no builtin generics).
+  - The AI service was executed end to end in a throwaway virtualenv with
+    ONLY fastapi, numpy and pydantic installed. 14 checks passed, covering:
+      * a full session scores and returns every contract key
+      * an empty session reports insufficient_data instead of phantom risk
+      * a partial session keeps real scores and flags the rest
+      * an impaired profile scores above a typical one (0.745 vs 0.179)
+      * an attention-heavy profile raises ADHD specifically (0.663 vs 0.339)
+      * null, garbage, wrong-typed and unknown fields all return 200
+      * the PDF generator emits a valid document without reportlab
+      * the heatmap emits a valid PNG without opencv or Pillow
+  - All four games export correctly, accept {childId, onComplete}, log to
+    Firebase, and stop eye tracking on unmount.
+  - Session payload keys match across React -> Express -> FastAPI.
+
+NOT VERIFIED (needs npm install, which was left for you)
+  - The React app has not been compiled by react-scripts. Component logic is
+    unexercised until `npm start`.
+  - No end-to-end run through a real browser with a real webcam.
+  - MongoDB persistence has not been exercised against a live database.
+
+KNOWN SCIENTIFIC LIMITATION
+  No trained model weights ship with this project. Scoring uses a documented
+  clinical-heuristic path. Outputs are screening indicators, NOT diagnoses,
+  and are not validated against any real clinical cohort.

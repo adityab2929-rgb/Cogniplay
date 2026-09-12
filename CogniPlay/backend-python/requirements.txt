@@ -1,0 +1,54 @@
+# ===========================================================================
+# CogniPlay AI Service -- dependencies
+# ===========================================================================
+# Target: Python 3.9 (local dev) and Python 3.11 (Docker). The code uses only
+# typing.Optional / typing.List / typing.Dict, never PEP 604 unions or
+# builtin generics, so both interpreters run it unchanged.
+#
+#   pip install -r requirements.txt
+# ===========================================================================
+
+# ---------------------------------------------------------------------------
+# REQUIRED -- the service will not start without these four.
+# This is a complete install: every endpoint works, predictions are correct,
+# heatmaps render (via the stdlib PNG writer) and PDFs download.
+# ---------------------------------------------------------------------------
+fastapi>=0.100,<1.0
+uvicorn[standard]>=0.23,<1.0
+numpy>=1.24,<3.0
+pydantic>=1.10
+python-multipart>=0.0.6
+
+# ---------------------------------------------------------------------------
+# OPTIONAL -- heavy, service degrades gracefully without these
+# ---------------------------------------------------------------------------
+# Everything below is wrapped in try/except ImportError with a working
+# NumPy-only fallback. Together they are roughly 2.5 GB installed, so skip
+# them unless you specifically need the feature listed.
+#
+# Check what is actually loaded at runtime with:  GET /health
+#
+# torch          -- enables the real CNN / LSTM networks. Note that NO trained
+#                   weights ship with this project, so installing torch alone
+#                   changes nothing: the fusion model still uses the clinical
+#                   heuristics until a .pt file is placed in saved_models/.
+#                   Without torch: NumPy fallback models, same interface.
+# scikit-learn   -- required by shap.
+# pandas         -- required by shap.
+# shap           -- KernelExplainer attributions.
+#                   Without it: analytic weight x value attribution, which for
+#                   this additive model is the same answer in closed form.
+# opencv-python  -- fastest PNG encoding for the heatmap.
+#                   Without it: Pillow, then a stdlib zlib PNG writer.
+# reportlab      -- typeset parent PDF report.
+#                   Without it: a plain but valid stdlib-generated PDF.
+# matplotlib     -- not required by the service; useful for offline analysis
+#                   and for plotting during model development.
+# ---------------------------------------------------------------------------
+# torch>=2.0,<3.0
+# scikit-learn>=1.3,<2.0
+# pandas>=2.0,<3.0
+# shap>=0.44,<1.0
+# opencv-python>=4.8,<5.0
+# reportlab>=4.0,<5.0
+# matplotlib>=3.7,<4.0

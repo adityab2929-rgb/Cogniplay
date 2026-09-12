@@ -1,0 +1,49 @@
+services:
+  mongo:
+    image: mongo:7
+    container_name: cogniplay-mongo
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+
+  python-backend:
+    build: ./backend-python
+    container_name: cogniplay-ai
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - PYTHONUNBUFFERED=1
+
+  backend-node:
+    build: ./backend-node
+    container_name: cogniplay-api
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      - PORT=3001
+      - MONGODB_URI=mongodb://mongo:27017/cogniplay
+      - JWT_SECRET=change_me_before_you_deploy_anywhere
+      - PYTHON_AI_URL=http://python-backend:8000
+      - CORS_ORIGIN=http://localhost:3000
+    depends_on:
+      - mongo
+      - python-backend
+
+  frontend:
+    build: ./frontend
+    container_name: cogniplay-web
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - REACT_APP_API_URL=http://localhost:3001
+      - WDS_SOCKET_PORT=3000
+    depends_on:
+      - backend-node
+
+volumes:
+  mongo-data:
